@@ -1,8 +1,5 @@
-from distutils import file_util
-import io
-import os
-import urllib.request
 from pathlib import Path
+import time
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
@@ -14,7 +11,12 @@ class Image():
         self.screen = screen
         self.file_name = file_name
 
-        self.image = pygame.image.load("images/" + self.file_name)
+        try:
+            self.image = pygame.image.load("images\\" + self.file_name)
+        except FileNotFoundError or PermissionError:
+            time.sleep(500)
+            print(self.file_name)
+            self.image = pygame.image.load("images\\" + self.file_name)
 
         x, y = self.image.get_size()
         rx = 924 / x
@@ -25,7 +27,7 @@ class Image():
         height = self.image.get_height()
         width = self.image.get_width()
 
-        print("Height: " + str(height) + " width: " + str(width))
+        #print("Height: " + str(height) + " width: " + str(width))
 
         self.pos = (100 + (924 / 2) - (width / 2), 150 + (636 / 2) - (height / 2))
 

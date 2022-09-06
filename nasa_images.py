@@ -16,9 +16,18 @@ from helpers.image import Image
 class NASAImages(Screen):
     def __init__(self):
         self.image_pos = 0
-        self.images = dict()
 
-        self.sol = 0
+        self.images = dict()
+        self.images["curiosity"] = dict()
+        self.images["opportunity"] = dict()
+        self.images["spirit"] = dict()
+
+        self.downloaders = list()
+
+        self.data = dict()
+        self.data["curiosity"] = dict()
+        self.data["opportunity"] = dict()
+        self.data["spirit"] = dict()
 
         self.API_KEY = "J3gNT5GSEJBFVCanDTzj9aDUMdBuMDd94SGNPXcz"
 
@@ -28,139 +37,6 @@ class NASAImages(Screen):
 
         self.screen = pygame.display.set_mode(self.rect)
         pygame.display.set_caption("NASA Images")
-
-    def get_rect(self):
-        return self.rect
-
-    def previous_image(self):
-        self.image_pos = self.image_pos - 1
-        
-        if self.image_pos < 0:
-            self.image_pos = 0
-
-        self.number_scroll.set_current_indice(self.image_pos)
-
-    def next_image(self):
-        self.download_next_images()
-
-        self.image_pos = self.image_pos + 1
-
-        if self.image_pos not in self.indices:
-            self.image_pos = self.image_pos - 1
-
-        self.number_scroll.set_current_indice(self.image_pos)
-        #print(self.image_pos)
-
-    def set_sol(self):
-        self.sol = self.text_input_sol.get_input()
-        self.get_sol_data()
-        self.image_pos = 0
-        self.number_scroll = NumberScroll(
-            self.screen,
-            self.indices,
-            current_indice=0
-        )
-
-    def get_sol_data(self):
-        url = "https://api.nasa.gov/mars-photos/api/v1/rovers/" + self.rover + "/photos?sol=" + str(self.sol) + "&api_key=" + self.API_KEY
-
-        #print(url)
-
-        r = requests.get(url)
-        self.data = r.json()
-
-        self.indices = list()
-        for index, photo in enumerate(self.data["photos"]):
-            self.indices.append(index)
-        
-        self.number_scroll = NumberScroll(
-            self.screen,
-            self.indices,
-            current_indice=0
-        )
-
-        self.download_next_images()
-
-    def download_next_images(self):
-        count = self.image_pos
-        if (count + 4) in self.indices:
-            for photo in self.data["photos"][count:count+5]:
-                #print(count)
-                if count not in self.images.keys():
-                    file_name = os.path.basename(urlparse(photo['img_src']).path)
-                    if not Path("images/" + file_name).is_file():
-                        download = Downloader(count, photo['img_src'], self.add_downloaded_image)
-                        download.start()
-                    else:
-                        self.add_downloaded_image(count, file_name)
-                count = count + 1
-
-    def add_downloaded_image(self, index, file_name):
-        self.images[index] = Image(
-            screen=self.screen,
-            file_name=file_name
-        )
-
-    def check_exist(self, file_name):
-        if Path("images/" + self.file_name).is_file():
-            return True
-        else:
-            return False
-
-    def set_curiosity(self):
-        self.rover = "curiosity"
-        self.URL = self.CUR_URL
-
-        self.curiosity.background_color = (0, 255, 0)
-        self.opportunity.background_color = (255, 255, 255)
-        self.spirit.background_color = (255, 255, 255)
-
-        self.images = dict()
-        self.set_rover()
-
-    def set_opportunity(self):
-        self.rover = "opportunity"
-        self.URL = self.OPP_URL
-
-        self.curiosity.background_color = (255, 255, 255)
-        self.opportunity.background_color = (0, 255, 0)
-        self.spirit.background_color = (255, 255, 255)
-
-        self.images = dict()
-        self.set_rover()
-
-    def set_spirit(self):
-        self.rover = "spirit"
-        self.URL = self.SPU_URL
-
-        self.curiosity.background_color = (255, 255, 255)
-        self.opportunity.background_color = (255, 255, 255)
-        self.spirit.background_color = (0, 255, 0)
-
-        self.images = dict()
-        self.set_rover()
-    
-    def set_rover(self):
-        r = requests.get(self.URL)
-        data = r.json()
-
-        #print(data)
-
-        self.sols = list()
-        for photo_data in data["photo_manifest"]["photos"]:
-            self.sols.append(photo_data["sol"])
-
-        max_sol = data["photo_manifest"]["max_sol"]
-        print(max_sol)
-        self.sol = max_sol
-        self.text_input_sol.set_input(str(self.sol))
-        self.get_sol_data()
-
-    def run(self):
-        self.CUR_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Curiosity?api_key=" + self.API_KEY
-        self.OPP_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Opportunity?api_key=" + self.API_KEY
-        self.SPU_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Spirit?api_key=" + self.API_KEY
-        self.URL = self.CUR_URL
 
         self.left_button = Button(
             screen=self.screen,
@@ -197,7 +73,6 @@ class NASAImages(Screen):
             border_width=2,
             max=4
         )
-        self.text_input_sol.set_input(str(self.sol))
         self.submit_button = Button(
             screen=self.screen,
             text="Set Sol",
@@ -250,9 +125,135 @@ class NASAImages(Screen):
             callback_function=self.set_spirit
         )
 
+        self.CUR_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Curiosity?api_key=" + self.API_KEY
+        self.OPP_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Opportunity?api_key=" + self.API_KEY
+        self.SPU_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests/Spirit?api_key=" + self.API_KEY
+
+        self.URL = self.CUR_URL
         self.set_curiosity()
+
+    def get_rect(self):
+        return self.rect
+
+    def previous_image(self):
+        self.image_pos = self.image_pos - 1
+        
+        if self.image_pos < 0:
+            self.image_pos = 0
+
+        self.number_scroll.set_current_indice(self.image_pos)
+
+    def next_image(self):
+        self.image_pos = self.image_pos + 1
+
+        if self.image_pos not in self.indices:
+            self.image_pos = self.image_pos - 1
+
+        self.number_scroll.set_current_indice(self.image_pos)
+        #print(self.image_pos)
+
+    def set_sol(self):
+        self.sol = self.text_input_sol.get_input()
+        self.image_pos = 0
+        self.get_sol_data()
+        self.number_scroll = NumberScroll(
+            self.screen,
+            self.indices,
+            current_indice=0
+        )
+
+    def set_rover(self):
+        r = requests.get(self.URL)
+
+        print(self.URL)
+
+        temp = r.json()
+
+        self.sols = list()
+        for photo in temp["photo_manifest"]["photos"]:
+            self.sols.append(photo["sol"])
+
+        max_sol = temp["photo_manifest"]["max_sol"]
+        #print(max_sol)
+        self.sol = max_sol
+        self.text_input_sol.set_input(str(self.sol))
+        self.get_sol_data()
+
+    def get_sol_data(self):
+        url = "https://api.nasa.gov/mars-photos/api/v1/rovers/" + self.rover + "/photos?sol=" + str(self.sol) + "&api_key=" + self.API_KEY
+
+        print(url)
+
+        r = requests.get(url)
+        self.data[self.rover][self.sol] = r.json()
+
+        self.indices = list()
+        for index, photo in enumerate(self.data[self.rover][self.sol]["photos"]):
+            self.indices.append(index)
+        
+        self.number_scroll = NumberScroll(
+            self.screen,
+            self.indices,
+            current_indice=0
+        )
+
+    """
+    def download_next_images(self):
+        count = self.image_pos
+        if (count + 4) in self.indices:
+            for photo in self.data[self.rover][self.sol]["photos"][count:count+5]:
+                #print(count)
+                if self.sol not in self.images[self.rover].keys():
+                    self.get_sol_data()
+                
+                if self.sol not in self.images[self.rover].keys():
+                    self.images[self.rover][self.sol] = dict()
+                
+                if count not in self.images[self.rover][self.sol].keys() and count not in self.downloaders:
+                    file_name = os.path.basename(urlparse(photo['img_src']).path)
+                    download = Downloader(self.screen, count, photo['img_src'], self.images[self.rover][self.sol], self.downloaders)
+                    self.downloaders.append(count)
+                    download.start()
+                count = count + 1
+    """
+
+    def check_exist(self, file_name):
+        if Path("images\\" + file_name).is_file():
+            return True
+        else:
+            return False
+
+    def set_curiosity(self):
+        self.rover = "curiosity"
+        self.URL = self.CUR_URL
+
+        self.curiosity.background_color = (0, 255, 0)
+        self.opportunity.background_color = (255, 255, 255)
+        self.spirit.background_color = (255, 255, 255)
+
         self.set_rover()
 
+    def set_opportunity(self):
+        self.rover = "opportunity"
+        self.URL = self.OPP_URL
+
+        self.curiosity.background_color = (255, 255, 255)
+        self.opportunity.background_color = (0, 255, 0)
+        self.spirit.background_color = (255, 255, 255)
+
+        self.set_rover()
+
+    def set_spirit(self):
+        self.rover = "spirit"
+        self.URL = self.SPU_URL
+
+        self.curiosity.background_color = (255, 255, 255)
+        self.opportunity.background_color = (255, 255, 255)
+        self.spirit.background_color = (0, 255, 0)
+
+        self.set_rover()
+
+    def run(self):
         while True:
             pygame.time.Clock().tick(30)
             events = pygame.event.get()
@@ -261,10 +262,6 @@ class NASAImages(Screen):
 
             pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.rect[0], self.rect[1]))
 
-            if self.image_pos in self.indices:
-                if self.image_pos in self.images.keys():
-                    self.images[self.image_pos].handle_events(events)
-                    self.images[self.image_pos].draw()
 
             self.left_button.handle_events(events)
             self.left_button.draw()
@@ -273,6 +270,7 @@ class NASAImages(Screen):
             self.right_button.draw()
 
             self.text_input_sol.handle_events(events)
+
             if len(self.text_input_sol.text) > 0 and int(self.text_input_sol.text) in self.sols:
                 self.text_input_sol.background_color = (0, 255, 0)
             else:
@@ -292,6 +290,17 @@ class NASAImages(Screen):
 
             self.spirit.draw()
             self.spirit.handle_events(events)
+
+            if self.sol not in self.images[self.rover].keys():
+                self.images[self.rover][self.sol] = dict()
+
+            if self.image_pos not in self.downloaders and self.image_pos not in self.images[self.rover][self.sol].keys():
+                download = Downloader(self.screen, self.image_pos, self.data[self.rover][self.sol]["photos"][self.image_pos]['img_src'], self.images[self.rover][self.sol], self.downloaders)
+                download.start()
+
+            if self.image_pos in self.images[self.rover][self.sol].keys() and  isinstance(self.images[self.rover][self.sol][self.image_pos], Image):
+                self.images[self.rover][self.sol][self.image_pos].handle_events(events)
+                self.images[self.rover][self.sol][self.image_pos].draw()
 
             pygame.display.flip()
 
